@@ -23,7 +23,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          docker build -t $DOCKER_IMAGE:${{ github.sha }} ./healthmate
+          docker build -t $DOCKER_IMAGE:${{ github.sha }} .
           docker push $DOCKER_IMAGE:${{ github.sha }}
 
   deploy:
@@ -48,16 +48,16 @@ jobs:
 
       - name: Delete existing deployment (if any)
         run: |
-          kubectl delete deployment healthmate-app --ignore-not-found
+          kubectl delete deployment minor --ignore-not-found
   
       - name: Update Docker image in deployment YAML
         run: |
-          sed -i "s|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:${{ github.sha }}|g" ./k8s/deployment.yml
+          sed -i "s|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:${{ github.sha }}|g" ./k8s/Deployment.yml
   
       - name: Deploy to Kubernetes
         run: |
           kubectl apply -f ./k8s/  # Apply the updated Kubernetes configuration
-          kubectl rollout status deployment/healthmate-app --timeout=60s
+          kubectl rollout status deployment/minor-app --timeout=60s
   
       - name: Verify the deployment status
         run: |
