@@ -48,7 +48,7 @@ jobs:
 
       - name: Delete existing deployment (if any)
         run: |
-          kubectl delete deployment minor --ignore-not-found
+          kubectl delete deployment minor-app --ignore-not-found
   
       - name: Update Docker image in deployment YAML
         run: |
