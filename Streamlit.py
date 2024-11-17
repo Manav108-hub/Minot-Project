@@ -104,8 +104,8 @@ def main():
         st.write("- Confidence Threshold: 70%")
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    data_dir = "E:/Minor-Project/Datasets/Train/animals"
-    model_path = "E:/Minor-Project/best_model.pth"
+    data_dir = "./Datasets/Train/animals"
+    model_path = "./best_model.pth"
     
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
