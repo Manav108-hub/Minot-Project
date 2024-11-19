@@ -23,8 +23,8 @@ jobs:
         run: echo "GITHUB_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
 
       - run: |
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/minor:${{ env.GITHUB_SHA }} .
-        docker push ${{ secrets.DOCKER_USERNAME }}/minor:${{ env.GITHUB_SHA }}
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/minor:${{ env.GITHUB_SHA }} .
+          docker push ${{ secrets.DOCKER_USERNAME }}/minor:${{ env.GITHUB_SHA }}
 
       - uses: leangen/action-ssh@v0.11.0
         with:
