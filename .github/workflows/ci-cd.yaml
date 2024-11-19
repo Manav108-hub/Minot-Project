@@ -28,8 +28,8 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          sudo docker build -t ${{ secrets.DOCKER_USERNAME }}/minor:${{ env.GITHUB_SHA }} .
-          sudo docker push ${{ secrets.DOCKER_USERNAME }}/minor:${{ env.GITHUB_SHA }}
+           docker build -t ${{ secrets.DOCKER_USERNAME }}/minor:${{ env.GITHUB_SHA }} .
+           docker push ${{ secrets.DOCKER_USERNAME }}/minor:${{ env.GITHUB_SHA }}
 
       - name: SSH into EC2 and deploy container
         uses: appleboy/ssh-action@master
