@@ -32,7 +32,7 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/minor:${{ env.GITHUB_SHA }}
 
       - name: SSH into EC2 and deploy container
-        uses: appleboy/scp-action@master
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
