@@ -5,7 +5,7 @@ from torchvision import transforms
 from PIL import Image
 import os
 import zipfile
-import time
+
 
 # Page configuration: Must be the first Streamlit command
 st.set_page_config(
@@ -16,9 +16,9 @@ st.set_page_config(
 )
 
 # Define the CNN Model
-class CNNModel(nn.Module):
+class SpeciesModel(nn.Module):
     def __init__(self, num_classes):
-        super(CNNModel, self).__init__()
+        super(SpeciesModel, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(64)
         self.relu = nn.ReLU()
@@ -52,10 +52,10 @@ class CNNModel(nn.Module):
 
 # Load model with caching
 @st.cache_resource
-def load_model(model_path, num_classes, device):
-    model = CNNModel(num_classes=num_classes)
-    if os.path.exists(model_path):
-        model.load_state_dict(torch.load(model_path, map_location=device))
+def load_model(model_directory, num_classes, device):
+    model = SpeciesModel(num_classes=num_classes)
+    if os.path.exists(model_directory):
+        model.load_state_dict(torch.load(model_directory, map_location=device))
     else:
         st.error("Model file not found. Please check the path.")
         return None
@@ -64,14 +64,14 @@ def load_model(model_path, num_classes, device):
     return model
 
 # Function to predict species
-def predict_species(image, model, transform, classes, device, threshold=0.7):
+def predict_species(image, model, transform, classes, device, defined_threshold=0.7):
     try:
         image_tensor = transform(image).unsqueeze(0).to(device)
         with torch.no_grad():
             outputs = model(image_tensor)
             probabilities = torch.nn.functional.softmax(outputs, dim=1)
             confidence, predicted_class = torch.max(probabilities, 1)
-        if confidence.item() < threshold:
+        if confidence.item() < defined_threshold:
             return None, None
         return classes[predicted_class.item()], confidence.item()
     except Exception as e:
@@ -90,13 +90,13 @@ def main():
         st.write("**Model Details:**")
         st.write("- CNN Architecture")
         st.write("- Input Size: 224x224")
-        st.write("- Confidence Threshold: 70%")
+        st.write("- Confidence defined_threshold: 70%")
         st.write(f"Device: {'GPU' if torch.cuda.is_available() else 'CPU'}")
 
     # Load model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    data_dir = "./Datasets/Train/animals"
-    model_path = "./best_model.pth"
+    data_path = "./Datasets/Train/animals"
+    model_directory = "./best_model.pth"
 
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -104,17 +104,20 @@ def main():
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
 
-    classes = sorted(os.listdir(data_dir))
+    classes = sorted(os.listdir(data_path))
     num_classes = len(classes)
 
     with st.spinner("Loading model..."):
-        model = load_model(model_path, num_classes, device)
+        model = load_model(model_directory, num_classes, device)
 
     # Upload image or zip file
     uploaded_file = st.file_uploader("Upload an image or a zip file:", type=["jpg", "jpeg", "png", "zip"])
 
     if uploaded_file:
         if uploaded_file.name.endswith(".zip"):
+            result_destination = r"C:\Users\ASUS\Desktop\Prediction"  # Define the output directory
+            os.makedirs(result_destination, exist_ok=True)
+
             with zipfile.ZipFile(uploaded_file) as z:
                 image_files = [f for f in z.namelist() if f.lower().endswith(('png', 'jpg', 'jpeg'))]
                 if not image_files:
@@ -123,18 +126,20 @@ def main():
 
                 st.write(f"Found {len(image_files)} image(s) in the zip file.")
 
-                results = []
                 for file_name in image_files:
                     with z.open(file_name) as f:
                         image = Image.open(f).convert("RGB")
                         species, confidence = predict_species(image, model, transform, classes, device)
-                        results.append((file_name, species))
 
-                for file_name, species in results:
-                    if species:
-                        st.markdown(f"**Image:** {file_name} - Predicted Species: **{species}**")
-                    else:
-                        st.warning(f"Low confidence for image: {file_name}.")
+                        if species:
+                            species_dir = os.path.join(result_destination, species)
+                            os.makedirs(species_dir, exist_ok=True)
+                            image.save(os.path.join(species_dir, os.path.basename(file_name)))
+                            st.markdown(f"**Image:** {file_name} - Predicted Species: **{species}**")
+                        else:
+                            st.warning(f"Low confidence for image: {file_name}.")
+
+                st.success(f"Predicted images have been saved in the folder: `{result_destination}`")
         else:
             image = Image.open(uploaded_file).convert("RGB")
             st.image(image, caption="Uploaded Image", use_container_width=True)
