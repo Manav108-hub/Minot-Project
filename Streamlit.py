@@ -5,7 +5,7 @@ from torchvision import transforms
 from PIL import Image
 import os
 import zipfile
-
+import io
 
 # Page configuration: Must be the first Streamlit command
 st.set_page_config(
@@ -114,41 +114,52 @@ def main():
     uploaded_file = st.file_uploader("Upload an image or a zip file:", type=["jpg", "jpeg", "png", "zip"])
 
     if uploaded_file:
-        if uploaded_file.name.endswith(".zip"):
-            result_destination = r"C:\Users\ASUS\Desktop\Prediction"  # Define the output directory
-            os.makedirs(result_destination, exist_ok=True)
+        output_zip = io.BytesIO()
+        with zipfile.ZipFile(output_zip, mode="w", compression=zipfile.ZIP_DEFLATED) as zipf:
+            if uploaded_file.name.endswith(".zip"):
+                with zipfile.ZipFile(uploaded_file) as z:
+                    image_files = [f for f in z.namelist() if f.lower().endswith(('png', 'jpg', 'jpeg'))]
+                    if not image_files:
+                        st.error("No image files found in the uploaded zip.")
+                        return
 
-            with zipfile.ZipFile(uploaded_file) as z:
-                image_files = [f for f in z.namelist() if f.lower().endswith(('png', 'jpg', 'jpeg'))]
-                if not image_files:
-                    st.error("No image files found in the uploaded zip.")
-                    return
+                    st.write(f"Found {len(image_files)} image(s) in the zip file.")
 
-                st.write(f"Found {len(image_files)} image(s) in the zip file.")
+                    for file_name in image_files:
+                        with z.open(file_name) as f:
+                            image = Image.open(f).convert("RGB")
+                            species, confidence = predict_species(image, model, transform, classes, device)
 
-                for file_name in image_files:
-                    with z.open(file_name) as f:
-                        image = Image.open(f).convert("RGB")
-                        species, confidence = predict_species(image, model, transform, classes, device)
+                            if species:
+                                img_buffer = io.BytesIO()
+                                image.save(img_buffer, format="JPEG")
+                                label = f"{species}_confidence_{confidence:.2f}"
+                                zipf.writestr(f"{label}/{os.path.basename(file_name)}", img_buffer.getvalue())
+                                st.markdown(f"**Image:** {file_name} - Predicted Species: **{species}** (Confidence: {confidence:.2f})")
+                            else:
+                                st.warning(f"Low confidence for image: {file_name}.")
+            else:
+                image = Image.open(uploaded_file).convert("RGB")
+                st.image(image, caption="Uploaded Image", use_container_width=True)
+                with st.spinner("Analyzing image..."):
+                    species, confidence = predict_species(image, model, transform, classes, device)
+                    if species:
+                        img_buffer = io.BytesIO()
+                        image.save(img_buffer, format="JPEG")
+                        label = f"{species}_confidence_{confidence:.2f}"
+                        zipf.writestr(f"{label}/{uploaded_file.name}", img_buffer.getvalue())
+                        st.success(f"Predicted Species: **{species}** (Confidence: {confidence:.2f})")
+                    else:
+                        st.warning("Low confidence for the uploaded image.")
 
-                        if species:
-                            species_dir = os.path.join(result_destination, species)
-                            os.makedirs(species_dir, exist_ok=True)
-                            image.save(os.path.join(species_dir, os.path.basename(file_name)))
-                            st.markdown(f"**Image:** {file_name} - Predicted Species: **{species}**")
-                        else:
-                            st.warning(f"Low confidence for image: {file_name}.")
-
-                st.success(f"Predicted images have been saved in the folder: `{result_destination}`")
-        else:
-            image = Image.open(uploaded_file).convert("RGB")
-            st.image(image, caption="Uploaded Image", use_container_width=True)
-            with st.spinner("Analyzing image..."):
-                species, confidence = predict_species(image, model, transform, classes, device)
-                if species:
-                    st.success(f"Predicted Species: **{species}**")
-                else:
-                    st.warning("Low confidence for the uploaded image.")
+        # Provide download link for the ZIP file
+        output_zip.seek(0)
+        st.download_button(
+            label="Download ZIP with Recognized Species",
+            data=output_zip,
+            file_name="recognized_species.zip",
+            mime="application/zip"
+        )
 
 if __name__ == "__main__":
     main()
