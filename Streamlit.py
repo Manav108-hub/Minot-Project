@@ -72,11 +72,11 @@ def predict_species(image, model, transform, classes, device, defined_threshold=
             probabilities = torch.nn.functional.softmax(outputs, dim=1)
             confidence, predicted_class = torch.max(probabilities, 1)
         if confidence.item() < defined_threshold:
-            return None, None
-        return classes[predicted_class.item()], confidence.item()
+            return None
+        return classes[predicted_class.item()]
     except Exception as e:
         st.error(f"Prediction error: {str(e)}")
-        return None, None
+        return None
 
 # Main function
 def main():
@@ -128,27 +128,25 @@ def main():
                     for file_name in image_files:
                         with z.open(file_name) as f:
                             image = Image.open(f).convert("RGB")
-                            species, confidence = predict_species(image, model, transform, classes, device)
+                            species = predict_species(image, model, transform, classes, device)
 
                             if species:
                                 img_buffer = io.BytesIO()
                                 image.save(img_buffer, format="JPEG")
-                                label = f"{species}_confidence_{confidence:.2f}"
-                                zipf.writestr(f"{label}/{os.path.basename(file_name)}", img_buffer.getvalue())
-                                st.markdown(f"**Image:** {file_name} - Predicted Species: **{species}** (Confidence: {confidence:.2f})")
+                                zipf.writestr(f"{species}/{os.path.basename(file_name)}", img_buffer.getvalue())
+                                st.markdown(f"**Image:** {file_name} - Predicted Species: **{species}**")
                             else:
                                 st.warning(f"Low confidence for image: {file_name}.")
             else:
                 image = Image.open(uploaded_file).convert("RGB")
                 st.image(image, caption="Uploaded Image", use_container_width=True)
                 with st.spinner("Analyzing image..."):
-                    species, confidence = predict_species(image, model, transform, classes, device)
+                    species = predict_species(image, model, transform, classes, device)
                     if species:
                         img_buffer = io.BytesIO()
                         image.save(img_buffer, format="JPEG")
-                        label = f"{species}_confidence_{confidence:.2f}"
-                        zipf.writestr(f"{label}/{uploaded_file.name}", img_buffer.getvalue())
-                        st.success(f"Predicted Species: **{species}** (Confidence: {confidence:.2f})")
+                        zipf.writestr(f"{species}/{uploaded_file.name}", img_buffer.getvalue())
+                        st.success(f"Predicted Species: **{species}**")
                     else:
                         st.warning("Low confidence for the uploaded image.")
 
