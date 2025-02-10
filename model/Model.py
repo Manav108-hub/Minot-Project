@@ -187,7 +187,7 @@ def train_model(model, train_loader, val_loader, criterion, optimizer, num_epoch
     return train_losses, train_accuracies, val_accuracies
 
 if __name__ == "__main__":
-    data_dir = "./Datasets/Train/animals"
+    data_dir = "../Datasets/Train/animals"
     batch_size = 32
     num_classes = len(os.listdir(data_dir))
 
